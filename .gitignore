@@ -6,3 +6,4 @@ notes
 *.core
 postactivate
 .postactivate
+dovecot-maildir
