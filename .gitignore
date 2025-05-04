@@ -1,0 +1,8 @@
+limbo
+notes
+*.log
+*.pem
+*.key
+*.core
+postactivate
+.postactivate
