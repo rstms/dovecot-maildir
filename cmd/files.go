@@ -45,6 +45,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 )
 
 var ZSTANDARD_MAGIC []byte = []byte{0x28, 0xb5, 0x2f, 0xfd}
@@ -72,7 +74,12 @@ func UncompressFile(pathName string) error {
 	debug := viper.GetBool("debug")
 	var decoded []byte
 
-	err := func() error {
+	stat, err := os.Stat(pathName)
+	if err != nil {
+		return fmt.Errorf("failed stat on compressed file: %v", err)
+	}
+
+	err = func() error {
 		file, err := os.Open(pathName)
 		if err != nil {
 			return fmt.Errorf("failed opening compressed file: %v", err)
@@ -157,6 +164,11 @@ func UncompressFile(pathName string) error {
 	err = os.WriteFile(pathName, decoded, 0600)
 	if err != nil {
 		return fmt.Errorf("failed writing decoded data to %s: %v", pathName, err)
+	}
+
+	err = SetStat(pathName, stat)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -255,4 +267,29 @@ func ListMaildirFiles(dir string) (*[]string, error) {
 		}
 	}
 	return &filenames, nil
+}
+
+func SetStat(path string, info fs.FileInfo) error {
+
+	// replicate access mode bits
+	err := os.Chmod(path, info.Mode())
+	if err != nil {
+		return fmt.Errorf("mode change failed on '%s': %v", path, err)
+	}
+
+	// replicate modification time
+	err = os.Chtimes(path, time.Now(), info.ModTime())
+	if err != nil {
+		return fmt.Errorf("mod time change failed on '%s': %v", path, err)
+	}
+
+	// replicate ownership
+	uid := info.Sys().(*syscall.Stat_t).Uid
+	gid := info.Sys().(*syscall.Stat_t).Gid
+	err = os.Chown(path, int(uid), int(gid))
+	if err != nil {
+		return fmt.Errorf("ownership change failed on '%s': %v", path, err)
+	}
+
+	return nil
 }
