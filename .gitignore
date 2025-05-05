@@ -7,3 +7,5 @@ notes
 postactivate
 .postactivate
 dovecot-maildir
+cmd/testdata/Maildir
+cmd/testdata/src
