@@ -31,6 +31,7 @@ POSSIBILITY OF SUCH DAMAGE.
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -67,6 +68,7 @@ func UncompressMaildirFiles(args []string) error {
 			return err
 		}
 		for _, file := range *files {
+			fmt.Printf("uncompressing %s\n", file)
 			err = UncompressFile(file)
 			if err != nil {
 				return err

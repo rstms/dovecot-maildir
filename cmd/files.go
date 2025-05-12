@@ -34,12 +34,14 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"compress/bzip2"
+	"compress/gzip"
 	"fmt"
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/viper"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -49,51 +51,61 @@ import (
 	"time"
 )
 
-var ZSTANDARD_MAGIC []byte = []byte{0x28, 0xb5, 0x2f, 0xfd}
-
 func IsCompressed(pathName string) (bool, error) {
 	file, err := os.Open(pathName)
 	if err != nil {
 		return false, err
 	}
 	defer file.Close()
-	magic := make([]byte, 4)
-	count, err := file.Read(magic)
+	cmpType, err := DetectCompressedFile(file)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("DetectCompressedFile: %v", err)
 	}
-	if count != 4 {
-		return false, errors.New("unexpected read count")
+	if cmpType == nil {
+		return false, nil
 	}
-	return bytes.Compare(magic, ZSTANDARD_MAGIC) == 0, nil
+	return true, nil
 }
 
 func UncompressFile(pathName string) error {
 
 	verbose := viper.GetBool("verbose")
 	debug := viper.GetBool("debug")
-	var decoded []byte
 
 	stat, err := os.Stat(pathName)
 	if err != nil {
 		return fmt.Errorf("failed stat on compressed file: %v", err)
 	}
 
-	err = func() error {
+	var compressionType *string
+	decoded, err := func() ([]byte, error) {
+		var decoded []byte
 		file, err := os.Open(pathName)
 		if err != nil {
-			return fmt.Errorf("failed opening compressed file: %v", err)
+			return decoded, fmt.Errorf("failed opening compressed file: %v", err)
 		}
 		defer file.Close()
-		decoder, err := zstd.NewReader(file)
+
+		compressionType, err = DetectCompressedFile(file)
 		if err != nil {
-			return fmt.Errorf("failed creating decoder: %v", err)
+			return decoded, fmt.Errorf("DetectCompressedFile: %v", err)
 		}
-		decoded, err = io.ReadAll(decoder.IOReadCloser())
+
+		switch *compressionType {
+		case "zstd":
+			decoded, err = decompressZstd(file)
+		case "gzip":
+			decoded, err = decompressGzip(file)
+		case "bzip2":
+			decoded, err = decompressBzip2(file)
+		default:
+			err = fmt.Errorf("unknown compression type: %s", pathName)
+		}
 		if err != nil {
-			return fmt.Errorf("failed writing uncompressed data: %v", err)
+			return decoded, err
 		}
-		return nil
+		return decoded, nil
+
 	}()
 	if err != nil {
 		return err
@@ -142,6 +154,7 @@ func UncompressFile(pathName string) error {
 
 	if verbose {
 		log.Printf("inFile=%s\n", pathName)
+		log.Printf("type=%s\n", *compressionType)
 		log.Printf("flags=%s\n", flags)
 		log.Printf("size=%v\n", size)
 		log.Printf("sizeW=%v\n", sizeW)
@@ -172,6 +185,43 @@ func UncompressFile(pathName string) error {
 	}
 
 	return nil
+}
+
+func decompressZstd(file io.Reader) ([]byte, error) {
+	var decoded []byte
+	decoder, err := zstd.NewReader(file)
+	if err != nil {
+		return decoded, fmt.Errorf("failed creating zstandard decoder: %v", err)
+	}
+	decoded, err = io.ReadAll(decoder.IOReadCloser())
+	if err != nil {
+		return decoded, fmt.Errorf("failed writing zstandard uncompressed data: %v", err)
+	}
+	return decoded, nil
+}
+
+func decompressGzip(file io.Reader) ([]byte, error) {
+	var decoded []byte
+	decoder, err := gzip.NewReader(file)
+	if err != nil {
+		return decoded, fmt.Errorf("failed creating gzip decoder: %v", err)
+	}
+	defer decoder.Close()
+	decoded, err = ioutil.ReadAll(decoder)
+	if err != nil {
+		return decoded, fmt.Errorf("failed writing gzip uncompressed data: %v", err)
+	}
+	return decoded, nil
+}
+
+func decompressBzip2(file io.Reader) ([]byte, error) {
+	var decoded []byte
+	decoder := bzip2.NewReader(file)
+	decoded, err := ioutil.ReadAll(decoder)
+	if err != nil {
+		return decoded, fmt.Errorf("failed writing bzip2 uncompressed data: %v", err)
+	}
+	return decoded, nil
 }
 
 func IsMaildir(dir string) (bool, error) {
