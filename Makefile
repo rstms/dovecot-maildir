@@ -34,7 +34,7 @@ release:
 	@$(if $(update),gh release delete -y v$(version),)
 	gh release create v$(version) --notes "v$(version)"
 
-clean: testclean
+clean: 
 	rm -f $(program)
 	go clean
 
