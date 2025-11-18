@@ -1,8 +1,6 @@
 module github.com/rstms/dovecot-maildir
 
-go 1.23.0
-
-toolchain go1.24.10
+go 1.25.4
 
 require (
 	github.com/klauspost/compress v1.18.1
