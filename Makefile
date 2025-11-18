@@ -30,9 +30,8 @@ debug: fmt
 	go test -v -failfast -count=1 -run $(test) . ./...
 
 release:
-	@$(gitclean) || { [ -n "$(dirty)" ] && echo "allowing dirty release"; }
-	@$(if $(update),gh release delete -y v$(version),)
-	gh release create v$(version) --notes "v$(version)"
+	$(gitclean)
+	echo gh release create v$(version) --notes "v$(version)"
 
 clean: 
 	rm -f $(program)
