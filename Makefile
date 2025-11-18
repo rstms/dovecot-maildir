@@ -31,7 +31,7 @@ debug: fmt
 
 release:
 	$(gitclean)
-	echo gh release create v$(version) --notes "v$(version)"
+	gh release create v$(version) --notes "v$(version)"
 
 clean: 
 	rm -f $(program)
