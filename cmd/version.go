@@ -51,5 +51,5 @@ func init() {
 }
 
 func PrintVersion() {
-	fmt.Printf("dovecot-maildir v%s\n", Version)
+	fmt.Printf("dovecot-maildir version %s\n", Version)
 }
