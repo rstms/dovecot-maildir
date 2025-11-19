@@ -53,6 +53,12 @@ IMAP server.  Can uncompress messages compressed with zstandard.
 IMPORTANT: Designed to be run with the dovecot daemon stopped, as it modifies
 maildir files in place without use of locking or indexing mechanisms.
 `,
+	Run: func(cmd *cobra.Command, args []string) {
+		if viper.GetBool("version") {
+			PrintVersion()
+			os.Exit(0)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -71,6 +77,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolP("recurse", "r", false, "recurse into child directories")
 	viper.BindPFlag("recurse", rootCmd.PersistentFlags().Lookup("recurse"))
+
+	rootCmd.PersistentFlags().BoolP("version", "", false, "output program name and version")
+	viper.BindPFlag("version", rootCmd.PersistentFlags().Lookup("version"))
 
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "enable debugging output")
 	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))

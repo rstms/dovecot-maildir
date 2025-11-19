@@ -42,10 +42,14 @@ var versionCmd = &cobra.Command{
 	Short: "output version",
 	Long:  `print the program version`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("dovecot-maildir v%s\n", Version)
+		PrintVersion()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+}
+
+func PrintVersion() {
+	fmt.Printf("dovecot-maildir v%s\n", Version)
 }
